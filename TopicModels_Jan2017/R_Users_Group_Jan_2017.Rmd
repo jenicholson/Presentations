@@ -1,0 +1,283 @@
+---
+title: "An Introduction to Topic Modeling"
+author: "Janae Nicholson, Ph.D."
+date: "January 14, 2017"
+output: 
+  ioslides_presentation:
+    fig_height: 5
+    fig_width: 9.5
+    keep_md: yes
+    widescreen: yes
+    logo: Rlogo_small.png
+    css: JEN_basic.css
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Overview
+
+- Introduction
+- High Level Explanation of One Model 
+- Topic Models in R
+- Visualization
+
+
+## What is a Topic Model?
+ 
+A Statistical Technique for discovering hidden "topics" from a group of documents.  It is an unsupervised learning technique in that a dependent variable is not supplied.  Rather the text (independent variables) are used to find an underlying structure.
+ 
+Topic models can be used to:
+ 
+- Reduce the dimensionality of a textual data set.
+- Summarize large archives of documents.
+- Search for documents about a subject.
+
+## A Motivating Example: Movie Reviews
+```{r set-options, echo=FALSE, cache=FALSE}
+options(width = 100)
+```
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(LDAvis, warn.conflicts = FALSE, quietly = TRUE)
+library(LDAvisData, quietly = TRUE)
+```
+
+```{r}
+strwrap(reviews[2])[1:14]
+```
+
+---
+ ![](images/topic2.jpg)
+ 
+ 
+##   
+<h2>That looks nice but I don't want to read all 2,000 reviews and parse into topics!</h2>
+
+##Latent Dirichlet Allocation (LDA)
+
+LDA is a generative probabilistic model that describes how the data was generated under some basic assumptions.
+
+It uses a Bayesian Hierarchal Model with many parameters.
+
+## Warning!!
+The following slides contain Bayesian Statistics!  Bayesians like to make lots of assumptions about the distributions of variables and some parameters! $$\alpha$$
+
+##Things We Know (or Assume we Know)
+1. We choose the number of topics, *K*.
+2. We have *V* words in the vocabulary.
+3. We have *M* documents in the corpus.
+4. There are $N_d$ number of words in document *d*.
+5. There are *N* total words in the corpus.
+6. The observed words for document *d*, $w_d$, is a vector containing the words in the document represented as integers.
+7. We assume vectors of hyper-parameters $\alpha$ and $\beta$.  In practice it is common to assume that all the elements of $\alpha$ are the same.  Similarly assume all the elements of $\beta$ are the same.
+ 
+##Things We Do Not Know
+1. For each document, $d = 1,..., M$, we come up with a length-*K* vector of probabilities that each topic is represented in the document, $\theta_d$.
+2. For each topic, $k = 1,..., K$, we come up with a length-*V* vector of probabilities that each word is represented in the topic, $\phi_k$.
+3. For $d = 1,..., M$ and words $j = 1,..., N_d$ in document $d$, we come up with latent topic variables, $z_{d,j}$, that relate each word to a topic.  The $z_{d,j}$ are integers between 1 and *K*.
+ 
+##Assumptions of Distributions
+ 
+$$\theta_d \sim Dirichlet(\alpha)$$
+$$\phi_k \sim Dirchlet(\beta)$$
+$$z_{d,j}|\theta_d \sim Multinomial(\theta_d)$$
+$$w_{d,j}|z_{d,j},\phi_k \sim Multinomial(\phi_k)$$
+ 
+ 
+##How Many Unknowns to Estimate?
+##How Many unknowns to Estimate?
+ 
+> $\theta$ has $M \times K$ unknowns.
+  
+>> $\phi$ has $K \times V$ unknowns. 
+  
+>>> $z_{d,j}$ has $N$ unknowns.
+ 
+##How Many unknowns to Estimate?
+For our chosen example:
+ 
+- $M = 2000$
+- $V = 1608$,
+- $N = 495035$
+- Choose $K = 20$.
+ 
+$$M \times K + K \times V + N$$
+$$= 2000 \times 20 + 20 \times 1608 + 495035 = 567195$$ 
+
+##How Many Unkowns to Estimate?
+For our chosen example: 
+
+$$unkown = 567,195 > 495,035 = known$$
+
+##How to Estimate the Unknown Parameters?
+1. Expectation Maximization (EM) Algorithm
+2. Gibbs Sampler
+
+#Now let's Do this in R!!!
+##First Load some necessary packages...
+```{r, echo=TRUE, message=FALSE, warning=FALSE}
+library(shiny)
+library(tm); library(SnowballC)
+library(topicmodels)
+library(LDAvis)
+#devtools::install_github("cpsievert/LDAvisData")
+library(LDAvisData)
+library(dplyr)
+library(ggplot2)
+```
+
+
+##Specify How to Create Document Term Matrix
+```{r, echo=TRUE}
+dtm.control <- list(
+  tolower = TRUE,
+  removePunctuation = TRUE,
+  removeNumbers = TRUE,
+  stopwords = c(stopwords("english"), "will", "can", "also", "one", "two", "get", "use", "thing"),
+  stemming = TRUE,
+  wordLengths = c(3, Inf),
+  weighting = weightTf,
+  stripWhitespace = TRUE
+)
+```
+
+##Create Document Term Matrix
+```{r, echo=TRUE}
+
+corpus <- VCorpus(VectorSource(reviews))
+dtm <- DocumentTermMatrix(corpus, control=dtm.control)
+dtms <- removeSparseTerms(dtm,0.97)
+#remove documents that are now empty
+rowTotals <- apply(dtms, 1, sum)
+dtms <- dtms[rowTotals > 0, ]
+dtms
+```
+
+
+##Look at the Top 20 Words
+```{r, echo=FALSE, message=FALSE, warning=FALSE, cache=TRUE}
+u.m <- as.matrix(dtms)
+u.v <- sort(colSums(u.m), decreasing=TRUE)
+u.d <- data.frame(word=names(u.v), freq=u.v)
+u.d$word <- reorder(u.d$word, u.d$freq)
+
+#plot the most used words
+ggplot(u.d[1:20,], aes(x=word, freq)) + geom_point(size=4, colour="red")+coord_flip() +
+  ylab("Frequency") + xlab("Word") +
+  theme(axis.text.x=element_text(size=13, colour="black"), 
+        axis.text.y=element_text(size=13,colour="black"), 
+        axis.title.x=element_text(size=14, face="bold"), axis.title.y=element_text(size=14,face="bold"),
+        plot.title=element_text(size=18,face="bold"))
+```
+
+##Set Up the Parameters
+```{r, echo=TRUE}
+my.k <- 20
+alpha <- 0.02
+#model parameters for Gibbs Sampling
+burnin <- 5000
+iter <- 1000
+keep <- 100
+set.seed(3456)
+```
+
+#Run the Model -- This takes a while 
+```{r, eval=FALSE, echo=TRUE}
+system.time(
+  model_lda2 <- LDA(dtms, my.k, method = "Gibbs", control = list(alpha = alpha, burnin = burnin, iter = iter, keep = keep))
+)
+saveRDS(model_lda2, file = "data/Review_LDA_20_1_14_17.rds")
+```
+
+##See if the Gibbs Sampler Stabilized
+```{r, echo=FALSE,  message=FALSE, warning=FALSE}
+model_lda2 <- readRDS("data/Review_LDA_20.rds")
+MC <- data.frame(itteration = seq(keep, burnin+iter, by = keep), logLiks = model_lda2@logLiks)
+ggplot(MC, aes(itteration, logLiks)) + geom_line() + 
+  theme(axis.title.x=element_text(size=14, face="bold"), 
+        axis.title.y=element_text(size=14,face="bold"))
+```
+
+##Look at the Results
+```{r}
+terms(model_lda2, 5)
+```
+
+##Necessary Function
+```{r, echo=TRUE}
+ldavis_topicmodels_json <- function(fitted.model){
+  phi <- posterior(fitted.model)$terms %>% as.matrix
+  theta <- posterior(fitted.model)$topics %>% as.matrix
+  vocab <- colnames(phi)
+  token.id <- fitted.model@wordassignments$i  
+  doc_length <- as.numeric(table(token.id))
+  word.id <- fitted.model@wordassignments$j
+  term.frequency <- as.numeric(table(word.id))
+  
+  json_lda <- LDAvis::createJSON(phi = phi, theta = theta,
+                                 vocab = vocab,
+                                 doc.length = doc_length,
+                                 term.frequency = term.frequency)
+  return(json_lda)
+}
+```
+
+##Show Topic Model Results
+```{r, eval=FALSE, echo=TRUE}
+json.obj <- ldavis_topicmodels_json(model_lda2)
+#run the shiny app locally
+serVis(json.obj)
+```
+
+
+##Comparison with a similar analysis
+This data has been analyzed in a [similar way.](http://cpsievert.github.io/LDAvis/reviews/reviews.html)  
+
+With a similar [output](http://cpsievert.github.io/LDAvis/reviews/vis/#topic=7&lambda=0.6&term=)  
+
+But my results are differerent for the following reasons:
+
+- I used a different set of words for stop words (removed words).
+- I used a different package to compute the model.
+- I used a differnt random seed.
+
+##Choosing the Number of Topics, $K$
+
+- Choose a manageable number that is helpful to you.  
+-- (You can always try a few.)
+- Maximize the Logliklihood or a function of the Logliklihood with respect to $K$. 
+- Use Hierarchal Dirichlet Process.
+- Use perplexity (Stanford Topic Modeling Toolbox).
+
+
+##Other Topic Models  
+
+- Structural Topic Modeling
+- Relational Topic Modeling
+- Correlated Topic Models
+- Hierarchial Dirichlet Process
+
+
+##Further Information on LDA
+
+Wikipedia Article  
+[https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation](https://en.wikipedia.org/wiki/Latent_Dirichlet_allocation)
+
+Nice Review of LDA  
+[http://dl.acm.org/citation.cfm?id=2133826](http://dl.acm.org/citation.cfm?id=2133826)
+
+Example using Comics  
+[http://cpsievert.github.io/projects/615/xkcd/](http://cpsievert.github.io/projects/615/xkcd/)
+
+
+##Packages in R
+
+[topicmodels](https://cran.r-project.org/web/packages/topicmodels/index.html)
+
+[lda](https://cran.r-project.org/web/packages/lda/index.html)
+
+[mallet](https://cran.r-project.org/web/packages/mallet/index.html)
+
+[LDAvis](https://cran.r-project.org/web/packages/LDAvis/index.html)
