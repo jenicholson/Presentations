@@ -29,7 +29,7 @@ qplot(cut, data=diamonds, fill=clarity, geom="bar", main="Bar Chart of Diamond C
 
 #a first histogram, note fill sets the color inside the bar, colour sets the boundary color
 qplot(price, data=diamonds, geom="histogram", main="Histogram of Diamond Prices", 
-      fill=I("cornflowerblue"))
+      fill=I("cornflowerblue"), colour = I("black"))
 
 #try a density plot
 qplot(price, data=diamonds, geom="density", fill=cut, main="Density of Price by Cut")
