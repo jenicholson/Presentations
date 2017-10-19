@@ -11,6 +11,7 @@ output:
     fig_height: 5
     fig_width: 9.5
     keep_md: no
+    css: reveal2.css
     self_contained: false
 ---
 
@@ -19,6 +20,10 @@ knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ## Introduction
+
+Follow on Github at:
+[https://github.com/jenicholson/Presentations/blob/master/
+KC17_sparklyr/Sparklyr_revealjs.Rmd](https://github.com/jenicholson/Presentations/blob/master/KC17_sparklyr/Sparklyr_revealjs.Rmd)
 
 ## Overview
 
@@ -69,12 +74,18 @@ sc <- spark_connect(master = "local")
 
 ## Read Data in Locally
 ```{r read_data, echo=TRUE, eval=TRUE}
-airlines_local <- read.csv(file = "C:/Users/janae/Documents/RProj/datasets/airlines_all.05p.csv",
+airlines_local <- read.csv(file =
+                "C:/Users/janae/Documents/RProj/datasets/airlines_all.05p.csv",
                         stringsAsFactors = FALSE) %>% 
   select(IsDepDelayed, Origin, Dest, UniqueCarrier,
          Year, DayofMonth, DayOfWeek, Month, Distance)
-weather_local <- read.csv(file="C:/Users/janae/Documents/RProj/datasets/Chicago_Ohare_International_Airport.csv", 
+weather_local <- read.csv(file =
+                "C:/Users/janae/Documents/RProj/datasets/Chicago_Ohare_International_Airport.csv", 
                        stringsAsFactors = FALSE)
+```
+
+## Manipulate Data Locally
+```{r, eval=TRUE, echo=TRUE}
 weather_local <- weather_local %>% 
   mutate(Date = as.Date(Date, format = "%m/%d/%Y")) %>% 
   mutate(Year = year(Date),
@@ -90,7 +101,6 @@ head(weather_local)
 ```{r push, eval=TRUE, echo=TRUE}
 airlines_sdf <- sdf_copy_to(sc, airlines_local, "airlines_sdf",
                         overwrite = TRUE)
-
 weather_sdf <- copy_to(sc, weather_local, "weather_sdf", 
                        overwrite = TRUE)
 head(weather_sdf)
@@ -110,7 +120,7 @@ my_sdf <- tbl(sc, sql("select * from mytesthdfs"))
 - `sdf_` functions: uses Scala Spark Dataframe API
 
 
-## Data Manipulation via dplyr
+## Data Manipulation via `dplyr`
 ```{r munging, eval = TRUE, echo = TRUE}
 ohare_sdf <- airlines_sdf %>% 
   filter(Origin=="ORD" & Year >= 2005) %>% 
@@ -124,14 +134,13 @@ ohare_sdf <- airlines_sdf %>%
                          0, as.numeric(PrcpIn)),
          SnowIn = ifelse(is.na(SnowIn) | SnowIn == "T", 
                          0, as.numeric(SnowIn))) 
-sdf_dim(na.omit(ohare_sdf))
 
 ```
 
 ## Data Processing with sdf functions and Spark Feature Transformers
 
 ```{r, eval=TRUE, echo=TRUE}
-sdf_dim(ohare_sdf)
+sdf_dim(na.omit(ohare_sdf))
 ```
 
 ## Data Processing with sdf functions and Spark Feature Transformers
@@ -146,9 +155,13 @@ Some Other Useful sdf_ Functions
 - `sdf_separate_column()`
 
 
-## Some Useful Functions
+## A Useful Function
 ```{r useful, eval=TRUE, echo=TRUE}
 head(ohare_sdf)
+```
+
+## More Useful Functions
+```{r, eval = TRUE, echo=TRUE}
 final_local <- collect(head(ohare_sdf, 10))
 sdf_dim(na.omit(ohare_sdf))
 
@@ -172,8 +185,7 @@ prepared <- ml_prepare_features(ohare_sdf,
 
 ```{r traintest, eval=TRUE, echo=TRUE}
 prepared <- prepared %>% 
-  sdf_partition(training = 0.7, test = 0.2, validation = 0.1, 
-                seed = 101917)
+  sdf_partition(training = 0.7, test = 0.2, validation = 0.1, seed = 101917)
 train_sdf <- prepared$train
 test_sdf <- prepared$test
 validation_sdf <- prepared$validation

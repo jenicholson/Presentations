@@ -1,0 +1,91 @@
+/* Style sheet for Reveal.js Presentations
+I took this from V. Bauer's website and heavily edited
+Author: Janae Nicholson
+Date: 10/19/2017
+*/
+
+<style>
+
+/* R code */
+
+.reveal code {
+	background-color: #f5f5f5;	/* code bg color*/
+}
+
+.reveal p code {
+	background-color: #f5f5f5;	/* code bg color*/
+}
+
+.reveal pre code { /* code boxes */
+	word-wrap: normal; /* wrap code */
+	/*overflow: visible;*/ /* let text go beyond box */
+	overflow-wrap: break-word;
+  	/*white-space: pre-line;*/ /* wrap code */
+  	background-color: #FEFCFF;	/* code output bg color*/
+  	width: 940px; /* larger box*/
+  	font-size: 80%;
+}
+
+.reveal pre code.sourceCode { /* R input code */
+  	background-color: #f5f5f5;	/* code bg color*/
+  }
+
+.reveal pre  { /* code section */
+	/*margin-left: 0px; *//* left align code section */
+	width: 950px; /* larger box*/
+	font-size: 80%;
+	background-color: #f5f5f5; /* I don't think this matters */
+}
+
+/* Headings */
+
+.reveal h1 { /* Heading 1 */
+	text-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2); /* shadows */
+	font-weight: bold; /* bold */
+}
+
+.reveal h2.author { /* Heading 2 for an author */
+	font-style: 90%; /* could make bold or italics */
+}
+
+/* Images */
+
+.reveal section img{ /* images */
+  border: 0px; /* no border but still shadow */
+}
+
+/* Ordered and unordered lists */
+.reveal ol, ul {
+	text-align: left;
+	padding: 20px;
+}
+
+.reveal ul li{
+	text-align: left;
+	margin-left: 20px;
+}
+
+.reveal 0l li{
+	text-align: left;
+	margin-left: 20px;
+}
+
+/* links */
+a:link {
+	
+}
+
+/* Slide content area */
+/* these need to be at the bottom, do NOT move them */
+
+.reveal .slides { /* all slide content */
+  text-align: left; /* left align */
+  font-size: 100%; /* smaller text */
+}
+
+.reveal .slides section>* { /* this is for left align */
+  margin-left: 0;
+  margin-right: 0;
+}
+  
+</style>
