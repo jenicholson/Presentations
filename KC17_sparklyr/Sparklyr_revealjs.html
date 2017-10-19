@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="author" content="Janae Nicholson, Ph.D." />
+  <meta name="dcterms.date" content="2017-10-19" />
+  <title>Analytics with R in Spark in Practice</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+  <link rel="stylesheet" href="Sparklyr_revealjs_files/reveal.js-3.3.0.1/css/reveal.css"/>
+
+
+<style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #0000ff; } /* Keyword */
+code > span.ch { color: #008080; } /* Char */
+code > span.st { color: #008080; } /* String */
+code > span.co { color: #008000; } /* Comment */
+code > span.ot { color: #ff4000; } /* Other */
+code > span.al { color: #ff0000; } /* Alert */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #008000; font-weight: bold; } /* Warning */
+code > span.cn { } /* Constant */
+code > span.sc { color: #008080; } /* SpecialChar */
+code > span.vs { color: #008080; } /* VerbatimString */
+code > span.ss { color: #008080; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { } /* Variable */
+code > span.cf { color: #0000ff; } /* ControlFlow */
+code > span.op { } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #ff4000; } /* Preprocessor */
+code > span.do { color: #008000; } /* Documentation */
+code > span.an { color: #008000; } /* Annotation */
+code > span.cv { color: #008000; } /* CommentVar */
+code > span.at { } /* Attribute */
+code > span.in { color: #008000; } /* Information */
+</style>
+
+<link rel="stylesheet" href="Sparklyr_revealjs_files/reveal.js-3.3.0.1/css/theme/sky.css" id="theme">
+
+
+  <!-- some tweaks to reveal css -->
+  <style type="text/css">
+    .reveal h1 { font-size: 2.0em; }
+    .reveal h2 { font-size: 1.5em;  }
+    .reveal h3 { font-size: 1.25em;	}
+    .reveal h4 { font-size: 1em;	}
+
+    .reveal .slides>section,
+    .reveal .slides>section>section {
+      padding: 0px 0px;
+    }
+
+
+
+    .reveal table {
+      border-width: 1px;
+      border-spacing: 2px;
+      border-style: dotted;
+      border-color: gray;
+      border-collapse: collapse;
+      font-size: 0.7em;
+    }
+
+    .reveal table th {
+      border-width: 1px;
+      padding-left: 10px;
+      padding-right: 25px;
+      font-weight: bold;
+      border-style: dotted;
+      border-color: gray;
+    }
+
+    .reveal table td {
+      border-width: 1px;
+      padding-left: 10px;
+      padding-right: 25px;
+      border-style: dotted;
+      border-color: gray;
+    }
+
+
+  </style>
+
+    <style type="text/css">code{white-space: pre;}</style>
+
+
+<!-- Printing and PDF exports -->
+<script id="paper-css" type="application/dynamic-css">
+
+/* Default Print Stylesheet Template
+   by Rob Glazebrook of CSSnewbie.com
+   Last Updated: June 4, 2008
+
+   Feel free (nay, compelled) to edit, append, and
+   manipulate this file as you see fit. */
+
+
+@media print {
+
+	/* SECTION 1: Set default width, margin, float, and
+	   background. This prevents elements from extending
+	   beyond the edge of the printed page, and prevents
+	   unnecessary background images from printing */
+	html {
+		background: #fff;
+		width: auto;
+		height: auto;
+		overflow: visible;
+	}
+	body {
+		background: #fff;
+		font-size: 20pt;
+		width: auto;
+		height: auto;
+		border: 0;
+		margin: 0 5%;
+		padding: 0;
+		overflow: visible;
+		float: none !important;
+	}
+
+	/* SECTION 2: Remove any elements not needed in print.
+	   This would include navigation, ads, sidebars, etc. */
+	.nestedarrow,
+	.controls,
+	.fork-reveal,
+	.share-reveal,
+	.state-background,
+	.reveal .progress,
+	.reveal .backgrounds {
+		display: none !important;
+	}
+
+	/* SECTION 3: Set body font face, size, and color.
+	   Consider using a serif font for readability. */
+	body, p, td, li, div {
+		font-size: 20pt!important;
+		font-family: Georgia, "Times New Roman", Times, serif !important;
+		color: #000;
+	}
+
+	/* SECTION 4: Set heading font face, sizes, and color.
+	   Differentiate your headings from your body text.
+	   Perhaps use a large sans-serif for distinction. */
+	h1,h2,h3,h4,h5,h6 {
+		color: #000!important;
+		height: auto;
+		line-height: normal;
+		font-family: Georgia, "Times New Roman", Times, serif !important;
+		text-shadow: 0 0 0 #000 !important;
+		text-align: left;
+		letter-spacing: normal;
+	}
+	/* Need to reduce the size of the fonts for printing */
+	h1 { font-size: 28pt !important;  }
+	h2 { font-size: 24pt !important; }
+	h3 { font-size: 22pt !important; }
+	h4 { font-size: 22pt !important; font-variant: small-caps; }
+	h5 { font-size: 21pt !important; }
+	h6 { font-size: 20pt !important; font-style: italic; }
+
+	/* SECTION 5: Make hyperlinks more usable.
+	   Ensure links are underlined, and consider appending
+	   the URL to the end of the link for usability. */
+	a:link,
+	a:visited {
+		color: #000 !important;
+		font-weight: bold;
+		text-decoration: underline;
+	}
+	/*
+	.reveal a:link:after,
+	.reveal a:visited:after {
+		content: " (" attr(href) ") ";
+		color: #222 !important;
+		font-size: 90%;
+	}
+	*/
+
+
+	/* SECTION 6: more reveal.js specific additions by @skypanther */
+	ul, ol, div, p {
+		visibility: visible;
+		position: static;
+		width: auto;
+		height: auto;
+		display: block;
+		overflow: visible;
+		margin: 0;
+		text-align: left !important;
+	}
+	.reveal pre,
+	.reveal table {
+		margin-left: 0;
+		margin-right: 0;
+	}
+	.reveal pre code {
+		padding: 20px;
+		border: 1px solid #ddd;
+	}
+	.reveal blockquote {
+		margin: 20px 0;
+	}
+	.reveal .slides {
+		position: static !important;
+		width: auto !important;
+		height: auto !important;
+
+		left: 0 !important;
+		top: 0 !important;
+		margin-left: 0 !important;
+		margin-top: 0 !important;
+		padding: 0 !important;
+		zoom: 1 !important;
+
+		overflow: visible !important;
+		display: block !important;
+
+		text-align: left !important;
+		-webkit-perspective: none;
+		   -moz-perspective: none;
+		    -ms-perspective: none;
+		        perspective: none;
+
+		-webkit-perspective-origin: 50% 50%;
+		   -moz-perspective-origin: 50% 50%;
+		    -ms-perspective-origin: 50% 50%;
+		        perspective-origin: 50% 50%;
+	}
+	.reveal .slides section {
+		visibility: visible !important;
+		position: static !important;
+		width: auto !important;
+		height: auto !important;
+		display: block !important;
+		overflow: visible !important;
+
+		left: 0 !important;
+		top: 0 !important;
+		margin-left: 0 !important;
+		margin-top: 0 !important;
+		padding: 60px 20px !important;
+		z-index: auto !important;
+
+		opacity: 1 !important;
+
+		page-break-after: always !important;
+
+		-webkit-transform-style: flat !important;
+		   -moz-transform-style: flat !important;
+		    -ms-transform-style: flat !important;
+		        transform-style: flat !important;
+
+		-webkit-transform: none !important;
+		   -moz-transform: none !important;
+		    -ms-transform: none !important;
+		        transform: none !important;
+
+		-webkit-transition: none !important;
+		   -moz-transition: none !important;
+		    -ms-transition: none !important;
+		        transition: none !important;
+	}
+	.reveal .slides section.stack {
+		padding: 0 !important;
+	}
+	.reveal section:last-of-type {
+		page-break-after: avoid !important;
+	}
+	.reveal section .fragment {
+		opacity: 1 !important;
+		visibility: visible !important;
+
+		-webkit-transform: none !important;
+		   -moz-transform: none !important;
+		    -ms-transform: none !important;
+		        transform: none !important;
+	}
+	.reveal section img {
+		display: block;
+		margin: 15px 0px;
+		background: rgba(255,255,255,1);
+		border: 1px solid #666;
+		box-shadow: none;
+	}
+
+	.reveal section small {
+		font-size: 0.8em;
+	}
+
+}  
+</script>
+
+
+<script id="pdf-css" type="application/dynamic-css">
+    
+/**
+ * This stylesheet is used to print reveal.js
+ * presentations to PDF.
+ *
+ * https://github.com/hakimel/reveal.js#pdf-export
+ */
+
+* {
+	-webkit-print-color-adjust: exact;
+}
+
+body {
+	margin: 0 auto !important;
+	border: 0;
+	padding: 0;
+	float: none !important;
+	overflow: visible;
+}
+
+html {
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+/* Remove any elements not needed in print. */
+.nestedarrow,
+.reveal .controls,
+.reveal .progress,
+.reveal .playback,
+.reveal.overview,
+.fork-reveal,
+.share-reveal,
+.state-background {
+	display: none !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	text-shadow: 0 0 0 #000 !important;
+}
+
+.reveal pre code {
+	overflow: hidden !important;
+	font-family: Courier, 'Courier New', monospace !important;
+}
+
+ul, ol, div, p {
+	visibility: visible;
+	position: static;
+	width: auto;
+	height: auto;
+	display: block;
+	overflow: visible;
+	margin: auto;
+}
+.reveal {
+	width: auto !important;
+	height: auto !important;
+	overflow: hidden !important;
+}
+.reveal .slides {
+	position: static;
+	width: 100%;
+	height: auto;
+
+	left: auto;
+	top: auto;
+	margin: 0 !important;
+	padding: 0 !important;
+
+	overflow: visible;
+	display: block;
+
+	-webkit-perspective: none;
+	   -moz-perspective: none;
+	    -ms-perspective: none;
+	        perspective: none;
+
+	-webkit-perspective-origin: 50% 50%; /* there isn't a none/auto value but 50-50 is the default */
+	   -moz-perspective-origin: 50% 50%;
+	    -ms-perspective-origin: 50% 50%;
+	        perspective-origin: 50% 50%;
+}
+
+.reveal .slides section {
+	page-break-after: always !important;
+
+	visibility: visible !important;
+	position: relative !important;
+	display: block !important;
+	position: relative !important;
+
+	margin: 0 !important;
+	padding: 0 !important;
+	box-sizing: border-box !important;
+	min-height: 1px;
+
+	opacity: 1 !important;
+
+	-webkit-transform-style: flat !important;
+	   -moz-transform-style: flat !important;
+	    -ms-transform-style: flat !important;
+	        transform-style: flat !important;
+
+	-webkit-transform: none !important;
+	   -moz-transform: none !important;
+	    -ms-transform: none !important;
+	        transform: none !important;
+}
+
+.reveal section.stack {
+	margin: 0 !important;
+	padding: 0 !important;
+	page-break-after: avoid !important;
+	height: auto !important;
+	min-height: auto !important;
+}
+
+.reveal img {
+	box-shadow: none;
+}
+
+.reveal .roll {
+	overflow: visible;
+	line-height: 1em;
+}
+
+/* Slide backgrounds are placed inside of their slide when exporting to PDF */
+.reveal section .slide-background {
+	display: block !important;
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	z-index: -1;
+}
+
+/* All elements should be above the slide-background */
+.reveal section>* {
+	position: relative;
+	z-index: 1;
+}
+
+/* Display slide speaker notes when 'showNotes' is enabled */
+.reveal .speaker-notes-pdf {
+	display: block;
+	width: 100%;
+	max-height: none;
+	left: auto;
+	top: auto;
+	z-index: 100;
+}
+
+/* Display slide numbers when 'slideNumber' is enabled */
+.reveal .slide-number-pdf {
+	display: block;
+	position: absolute;
+	font-size: 14px;
+}
+
+</script>
+
+
+<script>
+var style = document.createElement( 'style' );
+style.type = 'text/css';
+var style_script_id = window.location.search.match( /print-pdf/gi ) ? 'pdf-css' : 'paper-css';
+var style_script = document.getElementById(style_script_id).text;
+style.innerHTML = style_script;
+document.getElementsByTagName('head')[0].appendChild(style);
+</script>
+
+</head>
+<body>
+  <div class="reveal">
+    <div class="slides">
+
+<section>
+    <h1 class="title">Analytics with R in Spark in Practice</h1>
+    <h2 class="author">Janae Nicholson, Ph.D.</h2>
+    <h3 class="date">October 19, 2017</h3>
+</section>
+
+<section id="introduction" class="slide level2">
+<h2>Introduction</h2>
+</section>
+<section id="overview" class="slide level2">
+<h2>Overview</h2>
+<ul>
+<li>R with Spark?</li>
+<li>Connecting</li>
+<li>Reading Data</li>
+<li>Data Manipulation</li>
+<li>Model Building with Spark ML Lib</li>
+<li>Tips and Tricks</li>
+</ul>
+</section>
+<section id="r-with-spark" class="slide level2">
+<h2>R with Spark?</h2>
+<ul>
+<li>Why R?</li>
+<li>Why Spark?</li>
+<li>Do I need Spark?</li>
+</ul>
+</section>
+<section id="getting-started" class="slide level2">
+<h2>Getting Started</h2>
+<p>Different Deployment Modes for <code>sparklyr</code></p>
+<ul>
+<li>local</li>
+<li>cluster</li>
+</ul>
+</section>
+<section id="getting-a-local-deployment-running" class="slide level2">
+<h2>Getting a local deployment running</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(sparklyr)
+versions &lt;-<span class="st"> </span><span class="kw">spark_available_versions</span>()
+<span class="kw">tail</span>(versions)</code></pre></div>
+<pre><code>##    spark hadoop                                                  install
+## 37 2.1.1    2.7 spark_install(version = &quot;2.1.1&quot;, hadoop_version = &quot;2.7&quot;)
+## 38 2.1.1    2.6 spark_install(version = &quot;2.1.1&quot;, hadoop_version = &quot;2.6&quot;)
+## 39 2.1.1    2.4 spark_install(version = &quot;2.1.1&quot;, hadoop_version = &quot;2.4&quot;)
+## 40 2.1.1    2.3 spark_install(version = &quot;2.1.1&quot;, hadoop_version = &quot;2.3&quot;)
+## 41 2.2.0    2.7 spark_install(version = &quot;2.2.0&quot;, hadoop_version = &quot;2.7&quot;)
+## 42 2.2.0    2.6 spark_install(version = &quot;2.2.0&quot;, hadoop_version = &quot;2.6&quot;)</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spark_install</span>(<span class="dt">version =</span> <span class="st">&quot;2.2.0&quot;</span>, <span class="dt">hadoop_version =</span> <span class="st">&quot;2.7&quot;</span>)</code></pre></div>
+</section>
+<section id="connecting-to-spark" class="slide level2">
+<h2>Connecting to Spark</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#library(sparklyr)</span>
+<span class="kw">library</span>(dplyr)
+<span class="kw">library</span>(tidyr)
+<span class="kw">library</span>(lubridate)
+<span class="kw">library</span>(ggplot2)
+sc &lt;-<span class="st"> </span><span class="kw">spark_connect</span>(<span class="dt">master =</span> <span class="st">&quot;local&quot;</span>)</code></pre></div>
+</section>
+<section id="read-data-in-locally" class="slide level2">
+<h2>Read Data in Locally</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">airlines_local &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="dt">file =</span> <span class="st">&quot;C:/Users/janae/Documents/RProj/datasets/airlines_all.05p.csv&quot;</span>,
+                        <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">select</span>(IsDepDelayed, Origin, Dest, UniqueCarrier,
+         Year, DayofMonth, DayOfWeek, Month, Distance)
+weather_local &lt;-<span class="st"> </span><span class="kw">read.csv</span>(<span class="dt">file=</span><span class="st">&quot;C:/Users/janae/Documents/RProj/datasets/Chicago_Ohare_International_Airport.csv&quot;</span>, 
+                       <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>)
+weather_local &lt;-<span class="st"> </span>weather_local <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">Date =</span> <span class="kw">as.Date</span>(Date, <span class="dt">format =</span> <span class="st">&quot;%m/%d/%Y&quot;</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">Year =</span> <span class="kw">year</span>(Date),
+         <span class="dt">Month =</span> <span class="kw">month</span>(Date),
+         <span class="dt">DayofMonth =</span> <span class="kw">day</span>(Date)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">select</span>(<span class="op">-</span>Date)
+<span class="kw">head</span>(weather_local) </code></pre></div>
+<pre><code>##   TmaxF TminF TmeanF PrcpIn SnowIn CDD  HDD GDD Year Month DayofMonth
+## 1    41    25   33.0   0.31      0   0 32.0   0 2005     1          1
+## 2    54    33   43.5   0.08      0   0 21.5   0 2005     1          2
+## 3    36    32   34.0   0.36      0   0 31.0   0 2005     1          3
+## 4    35    30   32.5   0.05    1.2   0 32.5   0 2005     1          4
+## 5    31    26   28.5   0.38    6.2   0 36.5   0 2005     1          5
+## 6    27    12   19.5   0.19    2.4   0 45.5   0 2005     1          6</code></pre>
+</section>
+<section id="push-data-to-spark" class="slide level2">
+<h2>Push Data to Spark</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">airlines_sdf &lt;-<span class="st"> </span><span class="kw">sdf_copy_to</span>(sc, airlines_local, <span class="st">&quot;airlines_sdf&quot;</span>,
+                        <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
+
+weather_sdf &lt;-<span class="st"> </span><span class="kw">copy_to</span>(sc, weather_local, <span class="st">&quot;weather_sdf&quot;</span>, 
+                       <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
+<span class="kw">head</span>(weather_sdf)</code></pre></div>
+<pre><code>## # Source:   lazy query [?? x 11]
+## # Database: spark_connection
+##   TmaxF TminF TmeanF PrcpIn SnowIn   CDD   HDD   GDD  Year Month
+##   &lt;int&gt; &lt;int&gt;  &lt;dbl&gt;  &lt;chr&gt;  &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1    41    25   33.0   0.31      0     0  32.0     0  2005     1
+## 2    54    33   43.5   0.08      0     0  21.5     0  2005     1
+## 3    36    32   34.0   0.36      0     0  31.0     0  2005     1
+## 4    35    30   32.5   0.05    1.2     0  32.5     0  2005     1
+## 5    31    26   28.5   0.38    6.2     0  36.5     0  2005     1
+## 6    27    12   19.5   0.19    2.4     0  45.5     0  2005     1
+## # ... with 1 more variables: DayofMonth &lt;int&gt;</code></pre>
+</section>
+<section id="pull-data-in-hadoop" class="slide level2">
+<h2>Pull Data in Hadoop</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(DBI)
+<span class="kw">dbGetQuery</span>(sc, <span class="st">&quot;USE my_db&quot;</span>)
+my_sdf &lt;-<span class="st"> </span><span class="kw">tbl</span>(sc, <span class="kw">sql</span>(<span class="st">&quot;select * from mytesthdfs&quot;</span>))</code></pre></div>
+</section>
+<section id="data-manipulation-of-spark-data-frames" class="slide level2">
+<h2>Data Manipulation of Spark Data Frames</h2>
+<ul>
+<li><code>dplyr</code>: uses Spark SQL</li>
+<li><code>sdf_</code> functions: uses Scala Spark Dataframe API</li>
+</ul>
+</section>
+<section id="data-manipulation-via-dplyr" class="slide level2">
+<h2>Data Manipulation via dplyr</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ohare_sdf &lt;-<span class="st"> </span>airlines_sdf <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">filter</span>(Origin<span class="op">==</span><span class="st">&quot;ORD&quot;</span> <span class="op">&amp;</span><span class="st"> </span>Year <span class="op">&gt;=</span><span class="st"> </span><span class="dv">2005</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">left_join</span>(weather_sdf, <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;Year&quot;</span> =<span class="st"> &quot;Year&quot;</span>, 
+                                <span class="st">&quot;Month&quot;</span> =<span class="st"> &quot;Month&quot;</span>,
+                                <span class="st">&quot;DayofMonth&quot;</span> =<span class="st"> &quot;DayofMonth&quot;</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">mutate</span>(<span class="dt">IsDepDelayed =</span> <span class="kw">ifelse</span>(IsDepDelayed <span class="op">==</span><span class="st"> &quot;YES&quot;</span>, <span class="dv">1</span>, <span class="dv">0</span>), 
+         <span class="dt">DayOfWeek =</span> <span class="kw">as.character</span>(DayOfWeek),
+         <span class="dt">Month =</span> <span class="kw">as.character</span>(Month),
+         <span class="dt">PrcpIn =</span> <span class="kw">ifelse</span>(<span class="kw">is.na</span>(PrcpIn) <span class="op">|</span><span class="st"> </span>PrcpIn <span class="op">==</span><span class="st"> &quot;T&quot;</span>, 
+                         <span class="dv">0</span>, <span class="kw">as.numeric</span>(PrcpIn)),
+         <span class="dt">SnowIn =</span> <span class="kw">ifelse</span>(<span class="kw">is.na</span>(SnowIn) <span class="op">|</span><span class="st"> </span>SnowIn <span class="op">==</span><span class="st"> &quot;T&quot;</span>, 
+                         <span class="dv">0</span>, <span class="kw">as.numeric</span>(SnowIn))) 
+<span class="kw">sdf_dim</span>(<span class="kw">na.omit</span>(ohare_sdf))</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+<pre><code>## [1] 71741    17</code></pre>
+</section>
+<section id="data-processing-with-sdf-functions-and-spark-feature-transformers" class="slide level2">
+<h2>Data Processing with sdf functions and Spark Feature Transformers</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sdf_dim</span>(ohare_sdf)</code></pre></div>
+<pre><code>## [1] 71741    17</code></pre>
+</section>
+<section id="data-processing-with-sdf-functions-and-spark-feature-transformers-1" class="slide level2">
+<h2>Data Processing with sdf functions and Spark Feature Transformers</h2>
+<p>Some Other Useful sdf_ Functions</p>
+<ul>
+<li><code>sdf_bind_rows()</code> and <code>sdf_bind_cols()</code></li>
+<li><code>sdf_copy_to()</code></li>
+<li><code>sdf_mutate()</code></li>
+<li><code>sdf_register()</code></li>
+<li><code>sdf_sample()</code></li>
+<li><code>sdf_separate_column()</code></li>
+</ul>
+</section>
+<section id="some-useful-functions" class="slide level2">
+<h2>Some Useful Functions</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">head</span>(ohare_sdf)</code></pre></div>
+<pre><code>## # Source:   lazy query [?? x 17]
+## # Database: spark_connection
+##   Origin  Dest UniqueCarrier  Year DayofMonth Distance TmaxF TminF TmeanF
+##    &lt;chr&gt; &lt;chr&gt;         &lt;chr&gt; &lt;int&gt;      &lt;int&gt;    &lt;int&gt; &lt;int&gt; &lt;int&gt;  &lt;dbl&gt;
+## 1    ORD   BOS            UA  2005         23      867    23     8   15.5
+## 2    ORD   SAT            UA  2005         11     1041    36    30   33.0
+## 3    ORD   SAT            UA  2005         31     1041    37    19   28.0
+## 4    ORD   BOS            UA  2005         20      867    28    23   25.5
+## 5    ORD   DAY            UA  2005          1      240    41    25   33.0
+## 6    ORD   MSP            UA  2005          3      334    36    32   34.0
+## # ... with 8 more variables: CDD &lt;dbl&gt;, HDD &lt;dbl&gt;, GDD &lt;dbl&gt;,
+## #   IsDepDelayed &lt;dbl&gt;, DayOfWeek &lt;chr&gt;, Month &lt;chr&gt;, PrcpIn &lt;dbl&gt;,
+## #   SnowIn &lt;dbl&gt;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">final_local &lt;-<span class="st"> </span><span class="kw">collect</span>(<span class="kw">head</span>(ohare_sdf, <span class="dv">10</span>))
+<span class="kw">sdf_dim</span>(<span class="kw">na.omit</span>(ohare_sdf))</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+<pre><code>## [1] 71741    17</code></pre>
+</section>
+<section id="sdf-register" class="slide level2">
+<h2>SDF Register</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">sdf_register</span>(ohare_sdf, <span class="st">&quot;ohare_sdf&quot;</span>)</code></pre></div>
+<pre><code>## # Source:   table&lt;ohare_sdf&gt; [?? x 17]
+## # Database: spark_connection
+##    Origin  Dest UniqueCarrier  Year DayofMonth Distance TmaxF TminF TmeanF
+##     &lt;chr&gt; &lt;chr&gt;         &lt;chr&gt; &lt;int&gt;      &lt;int&gt;    &lt;int&gt; &lt;int&gt; &lt;int&gt;  &lt;dbl&gt;
+##  1    ORD   BOS            UA  2005         23      867    23     8   15.5
+##  2    ORD   SAT            UA  2005         11     1041    36    30   33.0
+##  3    ORD   SAT            UA  2005         31     1041    37    19   28.0
+##  4    ORD   BOS            UA  2005         20      867    28    23   25.5
+##  5    ORD   DAY            UA  2005          1      240    41    25   33.0
+##  6    ORD   MSP            UA  2005          3      334    36    32   34.0
+##  7    ORD   IAH            UA  2005         10      925    35    29   32.0
+##  8    ORD   IAH            UA  2005         30      925    35    25   30.0
+##  9    ORD   SLC            UA  2005          8     1249    27    24   25.5
+## 10    ORD   SLC            UA  2005         28     1249    27     2   14.5
+## # ... with more rows, and 8 more variables: CDD &lt;dbl&gt;, HDD &lt;dbl&gt;,
+## #   GDD &lt;dbl&gt;, IsDepDelayed &lt;dbl&gt;, DayOfWeek &lt;chr&gt;, Month &lt;chr&gt;,
+## #   PrcpIn &lt;dbl&gt;, SnowIn &lt;dbl&gt;</code></pre>
+</section>
+<section id="data-processing-with-sparklyr" class="slide level2">
+<h2>Data Processing with <code>sparklyr</code></h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">prepared &lt;-<span class="st"> </span><span class="kw">ml_prepare_features</span>(ohare_sdf, 
+                             <span class="dt">features =</span> <span class="kw">c</span>(<span class="st">&quot;Dest&quot;</span>, <span class="st">&quot;UniqueCarrier&quot;</span>,
+                                          <span class="st">&quot;DayOfWeek&quot;</span>, <span class="st">&quot;Month&quot;</span>))</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+</section>
+<section id="machine-learning-with-spark-ml-library" class="slide level2">
+<h2>Machine Learning with Spark ML Library</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">prepared &lt;-<span class="st"> </span>prepared <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">sdf_partition</span>(<span class="dt">training =</span> <span class="fl">0.7</span>, <span class="dt">test =</span> <span class="fl">0.2</span>, <span class="dt">validation =</span> <span class="fl">0.1</span>, 
+                <span class="dt">seed =</span> <span class="dv">101917</span>)
+train_sdf &lt;-<span class="st"> </span>prepared<span class="op">$</span>train
+test_sdf &lt;-<span class="st"> </span>prepared<span class="op">$</span>test
+validation_sdf &lt;-<span class="st"> </span>prepared<span class="op">$</span>validation
+
+airY &lt;-<span class="st"> &quot;IsDepDelayed&quot;</span>
+airX &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Dest&quot;</span>, <span class="st">&quot;Year&quot;</span>, <span class="st">&quot;DayOfWeek&quot;</span>, <span class="st">&quot;Month&quot;</span>, 
+          <span class="st">&quot;UniqueCarrier&quot;</span>, <span class="st">&quot;Distance&quot;</span>, 
+          <span class="st">&quot;TmaxF&quot;</span>, <span class="st">&quot;TminF&quot;</span>, <span class="st">&quot;TmeanF&quot;</span>, <span class="st">&quot;PrcpIn&quot;</span>, <span class="st">&quot;SnowIn&quot;</span>,
+          <span class="st">&quot;CDD&quot;</span>, <span class="st">&quot;HDD&quot;</span>, <span class="st">&quot;GDD&quot;</span>)</code></pre></div>
+</section>
+<section id="machine-learning-with-spark-ml-lib" class="slide level2">
+<h2>Machine Learning with Spark ML Lib</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">reg_fit &lt;-<span class="st"> </span><span class="kw">ml_logistic_regression</span>(train_sdf,
+                                  <span class="dt">response =</span> airY,
+                                  <span class="dt">features =</span> airX)</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#summary(reg_fit)</span>
+
+tree_fit &lt;-<span class="st"> </span><span class="kw">ml_decision_tree</span>(train_sdf,
+                             <span class="dt">response =</span> airY,
+                             <span class="dt">features =</span> airX,
+                             <span class="dt">impurity =</span> <span class="st">&quot;gini&quot;</span>,
+                             <span class="dt">type =</span> <span class="st">&quot;classification&quot;</span>)</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+</section>
+<section id="machine-learning-with-spark-ml-lib-1" class="slide level2">
+<h2>Machine Learning with Spark ML Lib</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">rf_fit &lt;-<span class="st"> </span><span class="kw">ml_random_forest</span>(<span class="dt">x =</span> train_sdf, 
+                           <span class="dt">response =</span> airY,
+                           <span class="dt">features =</span> airX,
+                           <span class="dt">impurity =</span> <span class="st">&quot;gini&quot;</span>,
+                           <span class="dt">num.trees =</span> <span class="dv">100</span>,
+                           <span class="dt">type =</span> <span class="st">&quot;classification&quot;</span>,
+                           <span class="dt">seed =</span> <span class="dv">10432</span>)</code></pre></div>
+<pre><code>## * No rows dropped by &#39;na.omit&#39; call</code></pre>
+</section>
+<section id="machine-learning-with-spark-ml-lib-2" class="slide level2">
+<h2>Machine Learning with Spark ML Lib</h2>
+<p>Score the Test Data and Get Results <img src="Sparklyr_revealjs_files/figure-revealjs/perf-1.png" width="912" /></p>
+</section>
+<section id="feature-importance-for-trees" class="slide level2">
+<h2>Feature Importance for Trees</h2>
+<p><img src="Sparklyr_revealjs_files/figure-revealjs/importance-1.png" width="912" /></p>
+</section>
+<section id="score-data" class="slide level2">
+<h2>Score Data</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">score_sdf &lt;-<span class="st"> </span><span class="kw">sdf_predict</span>(rf_fit, validation_sdf) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">sdf_separate_column</span>(<span class="st">&quot;probability&quot;</span>, <span class="kw">list</span>(<span class="st">&quot;P_Delayed&quot;</span> =<span class="st"> </span><span class="dv">2</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">select</span>(IsDepDelayed, Dest, Year, DayOfWeek, Month, 
+         UniqueCarrier, Distance, TmaxF, TminF, TmeanF, 
+         PrcpIn, SnowIn, CDD, HDD, GDD, P_Delayed)
+<span class="kw">sdf_dim</span>(score_sdf)</code></pre></div>
+<pre><code>## [1] 7225   16</code></pre>
+</section>
+<section id="disconnecting" class="slide level2">
+<h2>Disconnecting</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spark_disconnect</span>(sc)</code></pre></div>
+<p>OR</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">spark_disconnect_all</span>()</code></pre></div>
+</section>
+<section id="demo" class="slide level2">
+<h2>Demo</h2>
+</section>
+<section id="tips-and-tricks" class="slide level2">
+<h2>Tips and Tricks</h2>
+<ol type="1">
+<li>Know your compute context</li>
+<li>Love Parquet</li>
+<li>Avoid collect()</li>
+</ol>
+</section>
+<section id="more-info" class="slide level2">
+<h2>More Info</h2>
+<p>RStudio Website:</p>
+<p><a href="https://spark.rstudio.com/" class="uri">https://spark.rstudio.com/</a></p>
+<p>CRAN Documentation:</p>
+<p><a href="https://cran.r-project.org/web/packages/sparklyr/sparklyr.pdf" class="uri">https://cran.r-project.org/web/packages/sparklyr/sparklyr.pdf</a></p>
+</section>
+<section id="thank-you" class="slide level2">
+<h2>Thank You</h2>
+<p>Yotabites:</p>
+<p><a href="https://www.yotabites.com/" class="uri">https://www.yotabites.com/</a></p>
+</section>
+    </div>
+  </div>
+
+  <script src="Sparklyr_revealjs_files/reveal.js-3.3.0.1/lib/js/head.min.js"></script>
+  <script src="Sparklyr_revealjs_files/reveal.js-3.3.0.1/js/reveal.js"></script>
+
+  <script>
+
+      // Full list of configuration options available at:
+      // https://github.com/hakimel/reveal.js#configuration
+      Reveal.initialize({
+        // Push each slide change to the browser history
+        history: true,
+        // Vertical centering of slides
+        center: false,
+        // Transition style
+        transition: 'slide', // none/fade/slide/convex/concave/zoom
+        // Transition style for full page slide backgrounds
+        backgroundTransition: 'none', // none/fade/slide/convex/concave/zoom
+
+
+
+        // Optional reveal.js plugins
+        dependencies: [
+        ]
+      });
+    </script>
+  <!-- dynamically load mathjax for compatibility with self-contained -->
+  <script>
+    (function () {
+      var script = document.createElement("script");
+      script.type = "text/javascript";
+      script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+      document.getElementsByTagName("head")[0].appendChild(script);
+    })();
+  </script>
+
+<script>
+  (function() {
+    if (window.jQuery) {
+      Reveal.addEventListener( 'slidechanged', function(event) {  
+        window.jQuery(event.previousSlide).trigger('hidden');
+        window.jQuery(event.currentSlide).trigger('shown');
+      });
+    }
+  })();
+</script>
+
+
+  </body>
+</html>

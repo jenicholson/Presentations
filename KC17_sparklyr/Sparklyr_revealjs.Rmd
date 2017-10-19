@@ -1,0 +1,354 @@
+---
+title: "Analytics with R in Spark in Practice"
+author: "Janae Nicholson, Ph.D."
+date: "October 19, 2017"
+output: 
+  revealjs::revealjs_presentation:
+    transition: "slide"
+    theme: "sky"
+    highlight: "haddock"
+    background_transition: "none"
+    fig_height: 5
+    fig_width: 9.5
+    keep_md: no
+    self_contained: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+## Overview
+
+- R with Spark?
+- Connecting
+- Reading Data
+- Data Manipulation
+- Model Building with Spark ML Lib
+- Tips and Tricks
+
+## R with Spark?
+
+- Why R?
+- Why Spark?
+- Do I need Spark?
+
+## Getting Started
+
+Different Deployment Modes for `sparklyr`
+
+- local
+- cluster
+
+## Getting a local deployment running
+
+```{r v_available, message=FALSE, echo = TRUE}
+library(sparklyr)
+versions <- spark_available_versions()
+tail(versions)
+
+```
+```{r message=FALSE, eval=FALSE, echo=TRUE}
+spark_install(version = "2.2.0", hadoop_version = "2.7")
+
+```
+
+## Connecting to Spark
+
+```{r packages, message=FALSE, echo = TRUE}
+#library(sparklyr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+sc <- spark_connect(master = "local")
+
+```
+
+## Read Data in Locally
+```{r read_data, echo=TRUE, eval=TRUE}
+airlines_local <- read.csv(file = "C:/Users/janae/Documents/RProj/datasets/airlines_all.05p.csv",
+                        stringsAsFactors = FALSE) %>% 
+  select(IsDepDelayed, Origin, Dest, UniqueCarrier,
+         Year, DayofMonth, DayOfWeek, Month, Distance)
+weather_local <- read.csv(file="C:/Users/janae/Documents/RProj/datasets/Chicago_Ohare_International_Airport.csv", 
+                       stringsAsFactors = FALSE)
+weather_local <- weather_local %>% 
+  mutate(Date = as.Date(Date, format = "%m/%d/%Y")) %>% 
+  mutate(Year = year(Date),
+         Month = month(Date),
+         DayofMonth = day(Date)) %>% 
+  select(-Date)
+head(weather_local) 
+
+```
+
+## Push Data to Spark
+
+```{r push, eval=TRUE, echo=TRUE}
+airlines_sdf <- sdf_copy_to(sc, airlines_local, "airlines_sdf",
+                        overwrite = TRUE)
+
+weather_sdf <- copy_to(sc, weather_local, "weather_sdf", 
+                       overwrite = TRUE)
+head(weather_sdf)
+```
+
+## Pull Data in Hadoop
+
+```{r pull, eval=FALSE, echo=TRUE}
+library(DBI)
+dbGetQuery(sc, "USE my_db")
+my_sdf <- tbl(sc, sql("select * from mytesthdfs"))
+
+```
+## Data Manipulation of Spark Data Frames
+
+- `dplyr`: uses Spark SQL
+- `sdf_` functions: uses Scala Spark Dataframe API
+
+
+## Data Manipulation via dplyr
+```{r munging, eval = TRUE, echo = TRUE}
+ohare_sdf <- airlines_sdf %>% 
+  filter(Origin=="ORD" & Year >= 2005) %>% 
+  left_join(weather_sdf, by = c("Year" = "Year", 
+                                "Month" = "Month",
+                                "DayofMonth" = "DayofMonth")) %>% 
+  mutate(IsDepDelayed = ifelse(IsDepDelayed == "YES", 1, 0), 
+         DayOfWeek = as.character(DayOfWeek),
+         Month = as.character(Month),
+         PrcpIn = ifelse(is.na(PrcpIn) | PrcpIn == "T", 
+                         0, as.numeric(PrcpIn)),
+         SnowIn = ifelse(is.na(SnowIn) | SnowIn == "T", 
+                         0, as.numeric(SnowIn))) 
+sdf_dim(na.omit(ohare_sdf))
+
+```
+
+## Data Processing with sdf functions and Spark Feature Transformers
+
+```{r, eval=TRUE, echo=TRUE}
+sdf_dim(ohare_sdf)
+```
+
+## Data Processing with sdf functions and Spark Feature Transformers
+
+Some Other Useful sdf_ Functions
+
+- `sdf_bind_rows()` and `sdf_bind_cols()`
+- `sdf_copy_to()`
+- `sdf_mutate()`
+- `sdf_register()`
+- `sdf_sample()`
+- `sdf_separate_column()`
+
+
+## Some Useful Functions
+```{r useful, eval=TRUE, echo=TRUE}
+head(ohare_sdf)
+final_local <- collect(head(ohare_sdf, 10))
+sdf_dim(na.omit(ohare_sdf))
+
+```
+
+## SDF Register
+
+```{r register, eval=TRUE, echo=TRUE}
+sdf_register(ohare_sdf, "ohare_sdf")
+```
+
+## Data Processing with `sparklyr`
+
+```{r dummyvars, eval=TRUE, echo=TRUE}
+prepared <- ml_prepare_features(ohare_sdf, 
+                             features = c("Dest", "UniqueCarrier",
+                                          "DayOfWeek", "Month"))
+```
+
+## Machine Learning with Spark ML Library
+
+```{r traintest, eval=TRUE, echo=TRUE}
+prepared <- prepared %>% 
+  sdf_partition(training = 0.7, test = 0.2, validation = 0.1, 
+                seed = 101917)
+train_sdf <- prepared$train
+test_sdf <- prepared$test
+validation_sdf <- prepared$validation
+
+airY <- "IsDepDelayed"
+airX <- c("Dest", "Year", "DayOfWeek", "Month", 
+          "UniqueCarrier", "Distance", 
+          "TmaxF", "TminF", "TmeanF", "PrcpIn", "SnowIn",
+          "CDD", "HDD", "GDD")
+```
+
+## Machine Learning with Spark ML Lib
+
+```{r model1, eval=TRUE, echo=TRUE}
+reg_fit <- ml_logistic_regression(train_sdf,
+                                  response = airY,
+                                  features = airX)
+#summary(reg_fit)
+
+tree_fit <- ml_decision_tree(train_sdf,
+                             response = airY,
+                             features = airX,
+                             impurity = "gini",
+                             type = "classification")
+
+```
+
+## Machine Learning with Spark ML Lib
+
+```{r model2, eval=TRUE, echo=TRUE}
+rf_fit <- ml_random_forest(x = train_sdf, 
+                           response = airY,
+                           features = airX,
+                           impurity = "gini",
+                           num.trees = 100,
+                           type = "classification",
+                           seed = 10432)
+
+```
+
+## Machine Learning with Spark ML Lib
+
+Score the Test Data and Get Results
+```{r perf, eval=TRUE, echo=FALSE}
+ml_models <- list(
+  "Logistic" = reg_fit,
+  "Decision Tree" = tree_fit,
+  "Random Forest" = rf_fit
+)
+
+# Create a function for scoring
+score_test_data <- function(model, data=test_sdf){
+  sdf_predict(model, data) %>%
+    select(IsDepDelayed, prediction, probability)
+}
+
+# Score all the models
+ml_score <- lapply(ml_models, score_test_data)
+
+calc_accuracy <- function(data, cutpoint = 0.5){
+  data %>%
+    sdf_separate_column("probability", list("P_YES" = 2)) %>% 
+    mutate(pred = if_else(P_YES > cutpoint, 1.0, 0.0),
+           prediction = as.double(pred),
+           tgt = ifelse(IsDepDelayed == 1,1,0),
+           IsDepDelayed = as.double(tgt)) %>%
+    ml_classification_eval(label = "IsDepDelayed", predicted_lbl = "prediction", metric = "accuracy")
+}
+
+# Calculate AUC
+perf_metrics <- data.frame(
+  model = names(ml_score),
+  AUC = 100 * sapply(ml_score, ml_binary_classification_eval,
+                     label = "IsDepDelayed", score = "probability"),
+  Accuracy = 100 * sapply(ml_score, calc_accuracy),
+  row.names = NULL, stringsAsFactors = FALSE)
+
+perf <- gather(perf_metrics, metric, value, AUC, Accuracy) %>%
+  mutate(val2=round(value,1))
+
+# plot a comparison of AUC
+gg2 <- ggplot(perf, aes(reorder(model, value), value, fill = metric)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label=val2),vjust=-0, hjust=1.1, colour="white",
+            position=position_dodge(.9), size=5) +
+  coord_flip() +
+  theme_bw() +
+  scale_fill_manual(values=c("#C9C9C9", "#89BDD3")) +
+  xlab("") +
+  ylab("Percent") +
+  ggtitle("Performance Metrics")
+gg2
+
+```
+
+## Feature Importance for Trees
+
+```{r importance, eval=TRUE, echo=FALSE}
+#run feature importance
+# Initialize results
+feature_importance <- data.frame()
+
+# Calculate feature importance
+for(i in c("Decision Tree", "Random Forest")){
+  feature_importance <- ml_tree_feature_importance(sc, ml_models[[i]]) %>%
+    mutate(Model = i) %>%
+    mutate(importance = as.numeric(levels(importance))[importance]) %>%
+    mutate(feature = as.character(feature)) %>%
+    rbind(feature_importance, .)
+}
+
+##need to clean up the results
+top_features <- feature_importance %>% 
+  group_by(Model) %>% 
+  arrange(Model, desc(importance)) %>%
+  slice(1:10) %>% 
+  ungroup() 
+keep_features <- unique(top_features$feature)
+clean_features <- feature_importance %>% 
+  filter(feature %in% keep_features)
+
+# Plot results
+clean_features %>%
+  ggplot(aes(reorder(feature, importance), importance, fill = Model)) + 
+  facet_wrap(~Model) +
+  geom_bar(stat = "identity") + 
+  theme_bw() +
+  scale_fill_manual(values=c("#C9C9C9", "#89BDD3")) +
+  coord_flip() +
+  xlab("") +
+  ggtitle("Top Feature Importance")
+```
+
+## Score Data
+
+```{r, eval=TRUE, echo=TRUE}
+score_sdf <- sdf_predict(rf_fit, validation_sdf) %>% 
+  sdf_separate_column("probability", list("P_Delayed" = 2)) %>% 
+  select(IsDepDelayed, Dest, Year, DayOfWeek, Month, 
+         UniqueCarrier, Distance, TmaxF, TminF, TmeanF, 
+         PrcpIn, SnowIn, CDD, HDD, GDD, P_Delayed)
+sdf_dim(score_sdf)
+```
+
+## Disconnecting
+
+```{r disconnect, eval=TRUE, echo=TRUE}
+spark_disconnect(sc)
+```
+OR
+```{r, eval = FALSE, echo = TRUE}
+spark_disconnect_all()
+```
+
+## Demo
+
+## Tips and Tricks
+
+1. Know your compute context
+2. Love Parquet
+3. Avoid collect()
+
+## More Info
+
+RStudio Website: 
+
+[https://spark.rstudio.com/](https://spark.rstudio.com/)
+
+
+CRAN Documentation: 
+
+[https://cran.r-project.org/web/packages/sparklyr/sparklyr.pdf](https://cran.r-project.org/web/packages/sparklyr/sparklyr.pdf)
+
+## Thank You
+
+Yotabites: 
+
+[https://www.yotabites.com/](https://www.yotabites.com/)
